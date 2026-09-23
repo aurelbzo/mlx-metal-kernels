@@ -1,0 +1,6 @@
+To beat with the kernel 
+
+N=     1000  naive: 0.3795 ms
+N=    10000  naive: 0.6358 ms
+N=   100000  naive: 1.6783 ms
+N=  1000000  naive: 14.6043 ms
