@@ -15,8 +15,8 @@ trained end-to-end inside a small coordinate MLP and benchmarked against a
 fixed Fourier-feature baseline.
 ## Results
 
-![Loss comparison](loss_comparison.png)
-![SDF slice comparison](sdf_slice_comparison.png)
+![Loss comparison](02_hash_encoder/loss_comparison.png)
+![SDF slice comparison](02_hash_encoder/sdf_slice_comparison.png)
 
-    hash_encoder: train_time=___s  test_mse=______
-fourier_baseline: train_time=___s  test_mse=______
+    hash_encoder: train_time=1.87s  test_mse=0.000007
+    fourier_baseline: train_time=0.79s  test_mse=0.000057
