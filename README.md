@@ -13,3 +13,10 @@ CUDA hash-grid encoder used in neural implicit surface research (the role
 `hashencoder.cu` plays in my S2MDF work), with a hand-derived backward pass,
 trained end-to-end inside a small coordinate MLP and benchmarked against a
 fixed Fourier-feature baseline.
+## Results
+
+![Loss comparison](loss_comparison.png)
+![SDF slice comparison](sdf_slice_comparison.png)
+
+    hash_encoder: train_time=___s  test_mse=______
+fourier_baseline: train_time=___s  test_mse=______
