@@ -175,18 +175,21 @@ class HashEncoder(nn.Module):
             output_dtypes=[mx.float32],
         )
         return outputs[0]
-
     def _make_encode_fn(self, level, resolution):
         table_size = self.table_size
         feature_dim = self.feature_dim
         forward_raw = self._forward_raw
 
-        def fwd(points, table):
+        @mx.custom_function
+        def encode(points, table):
             return forward_raw(level, points, table)
 
-        def fwd_vjp(primals, cotangents, outputs):
+        @encode.vjp
+        def encode_vjp(primals, cotangent, output):
+            # NOTE: with a single-output forward, MLX passes cotangent/output
+            # as single arrays, not lists — and expects a plain tuple back.
             points, table = primals
-            d_out = cotangents[0]
+            d_out = cotangent
 
             points_np = np.array(points)
             idx_np, w_np = _hash_corners_numpy(points_np, resolution, table_size)
@@ -200,10 +203,10 @@ class HashEncoder(nn.Module):
                 d_table = d_table.at[idx_mx[:, c]].add(contrib)
 
             d_points = mx.zeros_like(points)  # see module docstring: no coord grad
-            return [d_points, d_table]
+            return d_points, d_table
 
-        return mx.custom_vjp(fwd, fwd_vjp)
-
+        return encode
+    
     def __call__(self, points):
         feats = []
         for l in range(self.num_levels):
