@@ -17,8 +17,10 @@ one GPU dispatch. The kernel is forward-only.
 
 An optional [C++/MLX extension](01_projection_kernel/cpp_extension/) exposes
 the same operator through a Nanobind module and MLX's C++ custom-kernel API.
-It is a compact example of packaging a Metal operator behind a C++ interface;
-it remains forward-only and accepts float32 inputs.
+It is a compact example of packaging a Metal operator behind a C++ interface.
+The forward path and a custom first-order VJP accept float32 inputs; the
+piecewise derivative treats the selected nearest surface as fixed and does not
+support higher-order derivatives.
 
 ### 02 — Hash-grid encoder and SDF regression
 
@@ -39,6 +41,19 @@ Instant-NGP or S2MDF. It uses a simple hash at every level. First-order
 forward/backward checks pass on the recorded Apple GPU; higher-order gradients
 needed for an Eikonal loss are not implemented. The current demo optimizes SDF
 values only.
+
+## What this demonstrates
+
+- Python/MLX numerical work with reference comparisons and gradient checks.
+- Custom Metal kernels for an irregular hash-grid workload and SDF projection.
+- A C++/Nanobind interface and a hand-written first-order VJP for a
+  geometry-specific MLX operation.
+- Measured comparisons against MLX baselines on an Apple M1 Pro. Projection
+  timings cover forward only; hash-grid timings cover forward and backward.
+
+The projection operation is motivated by multi-SDF separation research, but
+this repository does not reproduce S2MDF or implement full object-separation
+constraints.
 
 ## Requirements
 
@@ -153,8 +168,9 @@ python -m pytest -q 01_projection_kernel/cpp_extension/tests
 The extension's interface, shape/dtype contract, and limitations are
 documented in its [README](01_projection_kernel/cpp_extension/README.md).
 Its build pins MLX 0.32.2 to match the recorded project environment; update
-that pin and rerun its tests when upgrading MLX. The recorded Apple GPU run
-passed both extension tests in 0.97 seconds.
+that pin and rerun its tests when upgrading MLX. The reported Apple M1 Pro run
+passed both the hash-encoder suite and the projection suite, including the
+custom VJP comparison against an ordinary MLX reference.
 
 The C++ extension README documents its synchronized, correctness-checked
 benchmark against an ordinary MLX implementation and summarizes the recorded
@@ -174,9 +190,11 @@ performance claims.
   collisions.
 - The default backward uses float atomics for table-gradient collisions, so
   accumulation order can cause small floating-point differences.
-- Coordinate gradients are first-order only. The forward and first-order
-  gradient suite passes on the recorded Metal device; verify higher-order
-  differentiation separately before adding Eikonal training.
+- Hash-encoder coordinate gradients are first-order only. The projection VJP
+  is also first-order and treats the selected nearest surface as fixed. Its
+  MLX-reference gradient test passed on the recorded Metal device;
+  finite-difference coverage and the VJP's end-to-end performance still need
+  validation.
 - No checkpointing, dataset loader, mesh extraction, or multi-object
   separation constraints are implemented here.
 - Results should be re-measured on the target machine before making speed or

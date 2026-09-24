@@ -6,9 +6,23 @@ with an inline Metal kernel; Nanobind provides the Python module binding and
 CMake builds the extension.
 
 Given points `p` and multiple signed distances and gradients at each point,
-the kernel chooses the surface with smallest absolute signed distance and
+the operator chooses the surface with smallest absolute signed distance and
 applies `p - d * grad`. The selected gradient is assumed to be a unit SDF
-normal. This is a forward-only operator; it does not define an MLX VJP.
+normal. The forward and custom first-order VJP are implemented in Metal
+kernels dispatched from the C++ extension and registered as an MLX custom
+function in Python.
+
+This primitive is motivated by multi-SDF geometry: it moves a query point to
+the nearest represented surface and can serve as a small building block in a
+separation-constraint pipeline. It does not by itself enforce pairwise object
+separation or reproduce S2MDF.
+
+The selected surface is treated as constant during the VJP (the derivative of
+the `argmin(abs(d))` decision is zero). At exact ties, the first surface wins,
+matching `argmin`. For upstream gradient `u` and selected surface `(d, g)`, the
+VJP is `grad_p = u`, `grad_d = -dot(u, g)`, and `grad_g = -d * u`; unselected
+surfaces receive zero gradients. This is a piecewise first-order derivative;
+the custom VJP does not implement higher-order derivatives.
 
 ## Build
 
@@ -41,9 +55,12 @@ MLX's custom-kernel wrapper when needed.
 python -m pytest -q 01_projection_kernel/cpp_extension/tests
 ```
 
-The tests compare the extension result with an ordinary MLX reference and
-check invalid-shape handling. The Metal kernel compiles on first evaluation,
-so run the tests on a Metal-enabled Apple Silicon Mac.
+The tests compare the forward result and the first-order VJP with ordinary MLX
+references, and check invalid-shape handling. The Metal kernels compile on
+first evaluation, so run the tests on a Metal-enabled Apple Silicon Mac.
+The user-reported Apple M1 Pro run passed the VJP reference comparison.
+Finite-difference coverage remains a useful follow-up, especially near cases
+where two surfaces have similar absolute distances.
 
 ## Benchmark
 
@@ -92,3 +109,8 @@ Full per-runner medians, MADs, throughput, and numerical error are in
 are in [`benchmarks/projection-metadata.json`](benchmarks/projection-metadata.json).
 These are measurements of this Mac and configuration, not portable performance
 claims or isolated kernel timings.
+
+The recorded timings cover the forward projection only. The VJP passes its
+MLX-reference correctness check on Metal, but has not yet been benchmarked.
+Extend the benchmark to measure forward-plus-backward before making a
+training-performance claim.
