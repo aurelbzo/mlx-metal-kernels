@@ -1,0 +1,5 @@
+# MLX is built for Apple Silicon; install in a native arm64 Python environment.
+mlx==0.32.2
+numpy>=1.26
+matplotlib>=3.8
+pytest>=8.0

@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools>=70", "cmake>=3.27", "nanobind==2.15.0", "mlx==0.32.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mlx-cpp-projection"
+version = "0.1.0"
+description = "C++/MLX binding for a fused nearest-SDF projection Metal kernel"
+requires-python = ">=3.10"
+dependencies = ["mlx==0.32.2"]
