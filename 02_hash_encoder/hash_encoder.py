@@ -17,9 +17,10 @@ Design:
     normally.
 
 KNOWN SIMPLIFICATIONS (documented on purpose, not oversights):
-  - No gradient w.r.t. input coordinates (d_points is returned as zeros).
-    This is fine for plain SDF-value regression, but would need to be
-    implemented properly to support an Eikonal (|grad|=1) loss term.
+  - The custom VJP computes first-order gradients w.r.t. input coordinates
+    analytically from the trilinear interpolation weights. This is needed
+    for SDF normals and is a step toward Eikonal training; higher-order
+    differentiation through this custom VJP still needs validation.
   - Hashing is always used, even for coarse levels where a dense (collision
     -free) index would be possible and slightly more accurate. This
     matches the *spirit* of Instant-NGP, not the exact reference algorithm.
@@ -202,7 +203,32 @@ class HashEncoder(nn.Module):
                 contrib = w_mx[:, c : c + 1] * d_out  # (N, F)
                 d_table = d_table.at[idx_mx[:, c]].add(contrib)
 
-            d_points = mx.zeros_like(points)  # see module docstring: no coord grad
+            # Differentiate the trilinear interpolation weights with respect
+            # to the input coordinates. Indices are piecewise constant; only
+            # the fractional position inside the cell contributes a gradient.
+            scaled = points * resolution
+            frac = scaled - mx.floor(scaled)
+            fx, fy, fz = frac[:, 0], frac[:, 1], frac[:, 2]
+            dx_terms = []
+            dy_terms = []
+            dz_terms = []
+            for c in range(8):
+                dx, dy, dz = (c >> 2) & 1, (c >> 1) & 1, c & 1
+                wx = fx if dx else 1.0 - fx
+                wy = fy if dy else 1.0 - fy
+                wz = fz if dz else 1.0 - fz
+                table_values = table[idx_mx[:, c]]
+                weighted_cotangent = d_out * table_values
+                dx_sign = 1.0 if dx else -1.0
+                dy_sign = 1.0 if dy else -1.0
+                dz_sign = 1.0 if dz else -1.0
+                dx_terms.append(mx.sum(weighted_cotangent * (dx_sign * resolution * wy * wz)[:, None], axis=-1))
+                dy_terms.append(mx.sum(weighted_cotangent * (dy_sign * resolution * wx * wz)[:, None], axis=-1))
+                dz_terms.append(mx.sum(weighted_cotangent * (dz_sign * resolution * wx * wy)[:, None], axis=-1))
+
+            d_points = mx.stack(
+                [sum(dx_terms), sum(dy_terms), sum(dz_terms)], axis=-1
+            )
             return d_points, d_table
 
         return encode
