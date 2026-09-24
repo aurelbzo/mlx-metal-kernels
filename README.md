@@ -156,6 +156,13 @@ Its build pins MLX 0.32.2 to match the recorded project environment; update
 that pin and rerun its tests when upgrading MLX. The recorded Apple GPU run
 passed both extension tests in 0.97 seconds.
 
+The C++ extension README documents its synchronized, correctness-checked
+benchmark against an ordinary MLX implementation and summarizes the recorded
+Apple M1 Pro results. The C++/Metal implementation was 1.24×–4.11× faster in
+the tested configurations, with a maximum absolute error of `1.19e-7`. Full
+results and environment metadata are linked there. These are end-to-end
+measurements for one Mac, not isolated kernel timings or portable claims.
+
 Training and benchmark timings depend on the Mac, MLX version, thermal state,
 and run configuration; treat them as local measurements rather than portable
 performance claims.

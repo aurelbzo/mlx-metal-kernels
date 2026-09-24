@@ -1,0 +1,16 @@
+{
+  "python": "3.11.3",
+  "mlx": "0.32.2",
+  "platform": "macOS-26.2-arm64-arm-64bit",
+  "device": "Device(gpu, 0)",
+  "gpu_model": "Apple M1 Pro",
+  "warmup": 5,
+  "repeats": 50,
+  "seed": 2026,
+  "timing_method": "interleaved order; perf_counter_ns around call + mx.eval + mx.synchronize",
+  "statistics": "median and median absolute deviation",
+  "methods": [
+    "mlx_reference",
+    "cpp_metal"
+  ]
+}
